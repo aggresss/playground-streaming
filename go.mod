@@ -1,4 +1,4 @@
-module github.com/aggresss/playground-streaming/webrtc/pion-fiddle
+module github.com/aggresss/playground-streaming
 
 go 1.15
 
