@@ -118,6 +118,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer pc.Close()
 
 	for _, codec := range []webrtc.RTPCodecCapability{
 		{MimeType: webrtc.MimeTypeOpus},
