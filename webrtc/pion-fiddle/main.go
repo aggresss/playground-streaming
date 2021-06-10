@@ -110,7 +110,8 @@ func main() {
 				URLs: []string{"stun:stun.l.google.com:19302"},
 			},
 		},
-		SDPSemantics: webrtc.SDPSemanticsUnifiedPlan,
+		SDPSemantics:  webrtc.SDPSemanticsUnifiedPlan,
+		RTCPMuxPolicy: webrtc.RTCPMuxPolicyRequire,
 	}
 
 	// Create a new RTCPeerConnection
