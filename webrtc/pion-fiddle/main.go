@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v3"
 )
@@ -113,18 +114,27 @@ func main() {
 	}
 
 	// Create a new RTCPeerConnection
-	peerConnection, err := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i)).NewPeerConnection(config)
+	pc, err := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i)).NewPeerConnection(config)
 	if err != nil {
 		panic(err)
 	}
 
-	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus}, "rtctool-audio", "auth-audio")
-	peerConnection.AddTrack(audioTrack)
-	videoTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264}, "rtctool-video", "auth-video")
-	peerConnection.AddTrack(videoTrack)
+	for _, codec := range []webrtc.RTPCodecCapability{
+		{MimeType: webrtc.MimeTypeOpus},
+		{MimeType: webrtc.MimeTypeH264},
+	} {
+		track, err := webrtc.NewTrackLocalStaticSample(codec, uuid.NewString(), uuid.NewString())
+		if err != nil {
+			panic(err)
+		}
+		_, err = pc.AddTrack(track)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	// Create an offer to send to the other process
-	offer, err := peerConnection.CreateOffer(nil)
+	offer, err := pc.CreateOffer(nil)
 	if err != nil {
 		panic(err)
 	}
