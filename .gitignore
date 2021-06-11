@@ -26,3 +26,6 @@
 *.7z
 *.xz
 *.tar
+
+## temp file
+*.sdp
