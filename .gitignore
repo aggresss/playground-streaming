@@ -1,0 +1,28 @@
+# .gitignore for playground-streaming
+
+## media file
+*.mp3
+*.acc
+*.wav
+*.mp4
+*.flv
+*.mov
+*.avi
+*.ts
+*.wmv
+*.wma
+*.mkv
+*.ivf
+*.h264
+*.ogg
+*.webm
+
+## archive file
+*.zip
+*.tgz
+*.bz2
+*.gz
+*.dmg
+*.7z
+*.xz
+*.tar
