@@ -3,4 +3,4 @@
 
 ffplay \
     -protocol_whitelist file,rtp,udp \
-    -i media.sdp
+    -i test.sdp
