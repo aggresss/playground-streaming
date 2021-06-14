@@ -1,22 +1,34 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
 	"fmt"
-)
+	"os"
 
-var (
-	input = flag.String("input", "", "input file")
+	"github.com/at-wat/ebml-go"
+	"github.com/at-wat/ebml-go/webm"
 )
-
-func readTrackInfo() error {
-	return nil
-}
 
 func main() {
-	flag.Parse()
-
-	if err := readTrackInfo(); err != nil {
-		fmt.Println(err.Error())
+	r, err := os.Open("test.mkv")
+	if err != nil {
+		panic(err)
 	}
+	defer r.Close()
+
+	var ret struct {
+		Header  webm.EBMLHeader `ebml:"EBML"`
+		Segment webm.Segment    `ebml:"Segment"`
+	}
+	if err := ebml.Unmarshal(r, &ret); err != nil {
+		fmt.Printf("error: %v\n", err)
+		return
+	}
+	j, err := json.MarshalIndent(ret, "", "  ")
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		return
+	}
+	fmt.Printf("%s\n", string(j))
+
 }
