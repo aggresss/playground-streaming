@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -24,11 +23,7 @@ func main() {
 		fmt.Printf("error: %v\n", err)
 		return
 	}
-	j, err := json.MarshalIndent(ret, "", "  ")
-	if err != nil {
-		fmt.Printf("error: %v\n", err)
-		return
-	}
-	fmt.Printf("%s\n", string(j))
+
+	fmt.Println(len(ret.Segment.Cluster))
 
 }
