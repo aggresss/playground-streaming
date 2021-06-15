@@ -5,10 +5,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pion/interceptor"
+	"github.com/pion/sdp"
 	"github.com/pion/webrtc/v3"
 )
 
-func main() {
+func pion_init() {
 
 	// Create a MediaEngine object to configure the supported codec
 	m := &webrtc.MediaEngine{}
@@ -140,6 +141,31 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("%#v\n", offer)
 
-	fmt.Printf("%#v", offer)
+	sd := &sdp.SessionDescription{}
+	sd.Unmarshal(offer.SDP)
+
+	fmt.Printf("%#v\n", sd)
+	for _, m := range sd.MediaDescriptions {
+		fmt.Printf("%#v\n", m)
+	}
+}
+
+func sdp_gen() {
+	sd := sdp.NewJSEPSessionDescription(false)
+	sd.WithFingerprint("sha-256", "8E:84:0C:91:60:EF:F6:3D:FC:AB:1C:44:74:BD:95:26:40:01:B5:89:27:44:FE:E1:83:86:60:DD:3B:86:BC:4D")
+
+	mAudio := sdp.NewJSEPMediaDescription("audio", []string{})
+	mAudio.WithPropertyAttribute("sendonly")
+	mAudio.WithMediaSource(3705385319, "f4dd9165-eea3-dd4c-8c5c-b71d5bcf388c", "stream-label", "label")
+	sd.WithMedia(mAudio)
+
+	sdp := sd.Marshal()
+	fmt.Println(sdp)
+}
+
+func main() {
+	// pion_init()
+	sdp_gen()
 }
