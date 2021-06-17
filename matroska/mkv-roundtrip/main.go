@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/at-wat/ebml-go"
-	"github.com/at-wat/ebml-go/webm"
+	"github.com/at-wat/ebml-go/mkvcore"
 )
 
 func main() {
@@ -15,15 +14,13 @@ func main() {
 	}
 	defer r.Close()
 
-	var ret struct {
-		Header  webm.EBMLHeader `ebml:"EBML"`
-		Segment webm.Segment    `ebml:"Segment"`
-	}
-	if err := ebml.Unmarshal(r, &ret); err != nil {
+	rs, err := mkvcore.NewSimpleBlockReader(r)
+	if err != nil {
 		fmt.Printf("error: %v\n", err)
 		return
 	}
 
-	fmt.Println(len(ret.Segment.Cluster))
-
+	for _, r := range rs {
+		fmt.Printf("%#v\n", r.TrackEntry())
+	}
 }
