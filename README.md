@@ -6,3 +6,4 @@
 - https://en.wikipedia.org/wiki/List_of_codecs
 - https://www.fileformat.com/
 - https://support.huaweicloud.com/vod_faq/vod080002.html
+- https://www.wowza.com/blog/streaming-protocols
