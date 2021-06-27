@@ -159,6 +159,17 @@ func sdp_gen() {
 	mAudio := sdp.NewJSEPMediaDescription("audio", []string{})
 	mAudio.WithPropertyAttribute("sendonly")
 	mAudio.WithMediaSource(3705385319, "f4dd9165-eea3-dd4c-8c5c-b71d5bcf388c", "stream-label", "label")
+	mAudio.WithICECandidate(sdp.ICECandidate{
+		Foundation: "tcp-candidate",
+		Typ:        "host",
+		Priority:   10798756,
+		IP:         "127.0.0.1",
+		Port:       10086,
+		Protocol:   "tcp",
+		ExtensionAttributes: []sdp.ICECandidateAttribute{
+			{Key: "tcptype", Value: "passive"},
+		},
+	})
 	sd.WithMedia(mAudio)
 
 	sdp := sd.Marshal()
