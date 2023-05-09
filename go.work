@@ -1,3 +1,7 @@
 go 1.20
 
-use ./webrtc
+use (
+	./matroska
+	./mp4
+	./webrtc
+)
