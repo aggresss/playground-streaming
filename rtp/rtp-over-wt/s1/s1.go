@@ -27,7 +27,7 @@ const (
 
 func main() {
 
-	// Step 01: Create a Webtransport client and audio/video stream
+	// Step 01: Create a WebTransport client and audio/video stream
 
 	tlsConf := &tls.Config{
 		InsecureSkipVerify: true,
@@ -69,7 +69,7 @@ func main() {
 	}
 	defer streamVideo.Close()
 
-	// Step 02: Listen UDP packet and forward packet to Webtransport
+	// Step 02: Listen UDP packet and forward packet to WebTransport
 
 	udpAudio, err := net.ListenPacket("udp", ":"+AUDIOUDPPORT)
 	if err != nil {
