@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -21,6 +22,7 @@ const (
 	WEBTRANSPORTPORT = "5059"
 	AUDIOUDPPORT     = "5004"
 	VIDEOUDPPORT     = "5006"
+	MAXPAYLOAD       = 1500
 )
 
 func main() {
@@ -53,19 +55,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	audioStream, err := conn.OpenStreamSync(context.Background())
+	streamAudio, err := conn.OpenStreamSync(context.Background())
 	if err != nil {
 		fmt.Println("OpenStreamSync failed:", err.Error())
 		return
 	}
-	defer audioStream.Close()
+	defer streamAudio.Close()
 
-	videoStream, err := conn.OpenStreamSync(context.Background())
+	streamVideo, err := conn.OpenStreamSync(context.Background())
 	if err != nil {
 		fmt.Println("OpenStreamSync failed:", err.Error())
 		return
 	}
-	defer videoStream.Close()
+	defer streamVideo.Close()
 
 	// Step 02: Listen UDP packet and forward packet to Webtransport
 
@@ -84,11 +86,43 @@ func main() {
 	fmt.Printf("listening on %s for audio\n", udpAudio.LocalAddr().String())
 
 	go func() {
+		for {
+			buf := make([]byte, MAXPAYLOAD)
+			_, _, err := udpAudio.ReadFrom(buf)
+			if err != nil {
+				fmt.Printf("recv udp audio faild:", err)
+				return
+			}
 
+			bufCopy := make([]byte, 2+len(buf))
+			binary.BigEndian.PutUint16(bufCopy, uint16(len(buf)))
+			copy(bufCopy[2:], buf)
+
+			_, err = streamAudio.Write(bufCopy)
+			if err != nil {
+				fmt.Println("write audio data failed:", err.Error())
+			}
+		}
 	}()
 
 	go func() {
+		for {
+			buf := make([]byte, MAXPAYLOAD)
+			_, _, err := udpVideo.ReadFrom(buf)
+			if err != nil {
+				fmt.Printf("recv udp video faild:", err)
+				return
+			}
 
+			bufCopy := make([]byte, 2+len(buf))
+			binary.BigEndian.PutUint16(bufCopy, uint16(len(buf)))
+			copy(bufCopy[2:], buf)
+
+			_, err = streamVideo.Write(bufCopy)
+			if err != nil {
+				fmt.Println("write video data failed:", err.Error())
+			}
+		}
 	}()
 
 	// Processing
