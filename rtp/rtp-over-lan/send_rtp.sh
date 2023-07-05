@@ -53,8 +53,8 @@ ffmpeg \
     -stream_loop -1 \
     -i ${MEDIA_FILE} \
     -sdp_file test.sdp \
-    -an -vcodec copy -f rtp -ssrc ${AUDIO_SSRC} -payload_type ${AUDIO_PT} rtp://${IP_ADDR}:${AUDIO_PORT} \
-    -vn -acodec copy -f rtp -ssrc ${VIDEO_SSRC} -payload_type ${VIDEO_PT} rtp://${IP_ADDR}:${VIDEO_PORT}
+    -vn -acodec copy -f rtp -ssrc ${AUDIO_SSRC} -payload_type ${AUDIO_PT} rtp://${IP_ADDR}:${AUDIO_PORT} \
+    -an -vcodec copy -f rtp -ssrc ${VIDEO_SSRC} -payload_type ${VIDEO_PT} rtp://${IP_ADDR}:${VIDEO_PORT}
 
 # Use tee can not generate sdp
 # ffmpeg \
