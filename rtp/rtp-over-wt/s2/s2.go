@@ -142,7 +142,7 @@ func forwardStreamtoUDP(stream webtransport.Stream, udpconn *net.UDPConn) {
 
 		_, err = udpconn.Write(buf)
 		if err != nil {
-			fmt.Printf("write data failed: %v\n", err)
+			// fmt.Printf("write data failed: %v\n", err)
 		}
 	}
 }
