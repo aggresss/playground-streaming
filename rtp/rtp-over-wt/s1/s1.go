@@ -58,14 +58,14 @@ func main() {
 	streamAudio, err := conn.OpenStreamSync(context.Background())
 	if err != nil {
 		fmt.Println("OpenStreamSync failed:", err.Error())
-		return
+		os.Exit(1)
 	}
 	defer streamAudio.Close()
 
 	streamVideo, err := conn.OpenStreamSync(context.Background())
 	if err != nil {
 		fmt.Println("OpenStreamSync failed:", err.Error())
-		return
+		os.Exit(1)
 	}
 	defer streamVideo.Close()
 
@@ -83,7 +83,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer udpVideo.Close()
-	fmt.Printf("listening on %s for audio\n", udpAudio.LocalAddr().String())
+	fmt.Printf("listening on %s for video\n", udpVideo.LocalAddr().String())
 
 	go func() {
 		for {
