@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -91,19 +93,46 @@ func main() {
 			isAudioStream = true
 		}
 
+		reader := bufio.NewReader(stream)
 		for {
+			buf := make([]byte, MAXPAYLOAD)
+			header := make([]byte, 2)
+			var bytesRead, n int
+			var err error
 
-			// bytes, err := reader.ReadBytes(byte('\n'))
-			// if err != nil {
-			// 	if err != io.EOF {
-			// 		fmt.Println("failed to read data, err:", err)
-			// 	}
-			// 	return
-			// }
-			// fmt.Printf("request: %s", bytes)
+			for bytesRead < 2 {
+				if n, err = reader.Read(header[bytesRead:2]); err != nil {
+					fmt.Printf("read stream header faild: %v\n", err)
+					return
+				}
+				bytesRead += n
+			}
 
-			// stream.Write(bytes)
-			// fmt.Printf("response: %s", bytes)
+			length := int(binary.BigEndian.Uint16(header))
+
+			if length > cap(buf) {
+				fmt.Printf("buf cap limit: %v\n", err)
+				return
+			}
+
+			bytesRead = 0
+			for bytesRead < length {
+				if n, err = reader.Read(buf[bytesRead:length]); err != nil {
+					fmt.Printf("read stream body faild: %v\n", err)
+					return
+				}
+				bytesRead += n
+			}
+
+			if isAudioStream {
+				_, err = audioUDPConn.Write(buf)
+			} else {
+				_, err = videoUDPConn.Write(buf)
+			}
+			if err != nil {
+				fmt.Printf("write data failed: %v\n", err)
+				return
+			}
 		}
 	})
 
