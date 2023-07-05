@@ -4,6 +4,6 @@ use (
 	./m7s/demo
 	./matroska
 	./mp4
-	./rtp/rtp-over-h3
+	./rtp/rtp-over-wt
 	./webrtc
 )
