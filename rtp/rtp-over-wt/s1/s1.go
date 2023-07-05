@@ -85,45 +85,9 @@ func main() {
 	defer udpVideo.Close()
 	fmt.Printf("listening on %s for video\n", udpVideo.LocalAddr().String())
 
-	go func() {
-		for {
-			buf := make([]byte, MAXPAYLOAD)
-			_, _, err := udpAudio.ReadFrom(buf)
-			if err != nil {
-				fmt.Printf("recv udp audio faild:", err)
-				return
-			}
+	go forwardUDPtoStream(udpAudio, streamAudio)
 
-			bufCopy := make([]byte, 2+len(buf))
-			binary.BigEndian.PutUint16(bufCopy, uint16(len(buf)))
-			copy(bufCopy[2:], buf)
-
-			_, err = streamAudio.Write(bufCopy)
-			if err != nil {
-				fmt.Println("write audio data failed:", err.Error())
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			buf := make([]byte, MAXPAYLOAD)
-			_, _, err := udpVideo.ReadFrom(buf)
-			if err != nil {
-				fmt.Printf("recv udp video faild:", err)
-				return
-			}
-
-			bufCopy := make([]byte, 2+len(buf))
-			binary.BigEndian.PutUint16(bufCopy, uint16(len(buf)))
-			copy(bufCopy[2:], buf)
-
-			_, err = streamVideo.Write(bufCopy)
-			if err != nil {
-				fmt.Println("write video data failed:", err.Error())
-			}
-		}
-	}()
+	go forwardUDPtoStream(udpVideo, streamVideo)
 
 	// Processing
 
@@ -135,6 +99,26 @@ func main() {
 		case s := <-ch:
 			fmt.Println(s)
 			os.Exit(0)
+		}
+	}
+}
+
+func forwardUDPtoStream(udpconn net.PacketConn, stream webtransport.Stream) {
+	for {
+		buf := make([]byte, MAXPAYLOAD)
+		_, _, err := udpconn.ReadFrom(buf)
+		if err != nil {
+			fmt.Printf("recv udp video faild:", err)
+			return
+		}
+
+		bufCopy := make([]byte, 2+len(buf))
+		binary.BigEndian.PutUint16(bufCopy, uint16(len(buf)))
+		copy(bufCopy[2:], buf)
+
+		_, err = stream.Write(bufCopy)
+		if err != nil {
+			fmt.Println("write data failed:", err.Error())
 		}
 	}
 }
