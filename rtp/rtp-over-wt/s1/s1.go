@@ -108,7 +108,7 @@ func forwardUDPtoStream(udpconn net.PacketConn, stream webtransport.Stream) {
 		buf := make([]byte, MAXPAYLOAD)
 		_, _, err := udpconn.ReadFrom(buf)
 		if err != nil {
-			fmt.Printf("recv udp video faild:", err)
+			fmt.Printf("recv udp datagram faild:", err)
 			return
 		}
 
@@ -118,7 +118,7 @@ func forwardUDPtoStream(udpconn net.PacketConn, stream webtransport.Stream) {
 
 		_, err = stream.Write(bufCopy)
 		if err != nil {
-			fmt.Println("write data failed:", err.Error())
+			fmt.Println("write data to stream failed:", err.Error())
 		}
 	}
 }
