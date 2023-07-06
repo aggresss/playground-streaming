@@ -106,14 +106,14 @@ func main() {
 func forwardUDPtoStream(udpconn net.PacketConn, stream webtransport.Stream) {
 	for {
 		buf := make([]byte, MAXPAYLOAD)
-		_, _, err := udpconn.ReadFrom(buf)
+		n, _, err := udpconn.ReadFrom(buf)
 		if err != nil {
 			fmt.Printf("recv udp datagram faild:", err)
 			return
 		}
 
-		bufCopy := make([]byte, 2+len(buf))
-		binary.BigEndian.PutUint16(bufCopy, uint16(len(buf)))
+		bufCopy := make([]byte, 2+n)
+		binary.BigEndian.PutUint16(bufCopy, uint16(n))
 		copy(bufCopy[2:], buf)
 
 		_, err = stream.Write(bufCopy)

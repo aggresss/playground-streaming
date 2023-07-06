@@ -105,7 +105,6 @@ func main() {
 	if err := s.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func forwardStreamtoUDP(stream webtransport.Stream, udpconn *net.UDPConn) {
@@ -140,7 +139,7 @@ func forwardStreamtoUDP(stream webtransport.Stream, udpconn *net.UDPConn) {
 			bytesRead += n
 		}
 
-		_, err = udpconn.Write(buf)
+		_, err = udpconn.Write(buf[:length])
 		if err != nil {
 			fmt.Printf("write data failed: %v\n", err)
 		}
