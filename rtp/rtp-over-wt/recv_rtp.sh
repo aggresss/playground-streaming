@@ -11,6 +11,6 @@ else
     sed -i '' 's/5006/5016/g' ${SDP_FILE}
 fi
 
-ffplay -stats \
+ffplay -loglevel debug \
     -protocol_whitelist file,rtp,udp \
     -i ${SDP_FILE}
