@@ -18,8 +18,8 @@ import (
 const (
 	HOST             = "localhost"
 	WEBTRANSPORTPORT = "5059"
-	AUDIOUDPPORT     = "5104"
-	VIDEOUDPPORT     = "5106"
+	AUDIOUDPPORT     = "5014"
+	VIDEOUDPPORT     = "5016"
 	MAXPAYLOAD       = 1500
 )
 
@@ -143,5 +143,7 @@ func forwardStreamtoUDP(stream webtransport.Stream, udpconn *net.UDPConn) {
 		if err != nil {
 			fmt.Printf("write data failed: %v\n", err)
 		}
+
+		fmt.Printf("forward stream to udp: %04d\r", length)
 	}
 }

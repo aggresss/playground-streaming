@@ -120,5 +120,7 @@ func forwardUDPtoStream(udpconn net.PacketConn, stream webtransport.Stream) {
 		if err != nil {
 			fmt.Println("write data to stream failed:", err.Error())
 		}
+
+		fmt.Printf("forward udp to stream: %04d\r", n)
 	}
 }
