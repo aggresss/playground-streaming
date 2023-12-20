@@ -1,32 +1,47 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
+	"github.com/pion/webrtc/v3/pkg/media/h264reader"
+	"github.com/pion/webrtc/v3/pkg/media/oggreader"
 )
 
 const (
-	HTTP_ADDR    = ":8082"
-	WHEP_EXT     = ".whep"
-	CANDIDATE    = "127.0.0.1"
-	ICE_UDP_PORT = 5060
-	ICE_TCP_PORT = 5060
+	HTTP_ADDR           = ":8082"
+	WHEP_EXT            = ".whep"
+	CANDIDATE           = "127.0.0.1"
+	ICE_UDP_PORT        = 5060
+	ICE_TCP_PORT        = 5060
+	AUDIO_FILE_NAME     = "output.ogg"
+	VIDEO_FILE_NAME     = "output.h264"
+	OGG_PAGE_DURATION   = time.Millisecond * 20
+	H264_FRAME_DURATION = time.Millisecond * 33
 )
 
 type whepHandler struct {
-	httpAddr   string
-	allowExt   string
-	candidates []string
-	iceUdpPort int
-	iceTcpPort int
+	httpAddr          string
+	allowExt          string
+	candidates        []string
+	iceUdpPort        int
+	iceTcpPort        int
+	audioFileName     string
+	videoFileName     string
+	oggPageDuration   time.Duration
+	h264FrameDuration time.Duration
 
 	locker         sync.RWMutex
 	mapWhepClients map[string]*webrtc.PeerConnection
@@ -35,6 +50,13 @@ type whepHandler struct {
 
 func (h *whepHandler) Init() error {
 	h.mapWhepClients = make(map[string]*webrtc.PeerConnection)
+
+	if _, err := os.Stat(h.audioFileName); err != nil {
+		return err
+	}
+	if _, err := os.Stat(h.videoFileName); err != nil {
+		return err
+	}
 
 	settingsEngine := webrtc.SettingEngine{}
 	settingsEngine.SetNAT1To1IPs(h.candidates, webrtc.ICECandidateTypeHost)
@@ -45,8 +67,7 @@ func (h *whepHandler) Init() error {
 	if err != nil {
 		return err
 	}
-	iceUdpMux := webrtc.NewICEUDPMux(nil, udplistener)
-	settingsEngine.SetICEUDPMux(iceUdpMux)
+	settingsEngine.SetICEUDPMux(webrtc.NewICEUDPMux(nil, udplistener))
 	tcplistener, err := net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   net.IP{0, 0, 0, 0},
 		Port: h.iceTcpPort,
@@ -54,8 +75,7 @@ func (h *whepHandler) Init() error {
 	if err != nil {
 		return err
 	}
-	iceTcpMux := webrtc.NewICETCPMux(nil, tcplistener, 20)
-	settingsEngine.SetICETCPMux(iceTcpMux)
+	settingsEngine.SetICETCPMux(webrtc.NewICETCPMux(nil, tcplistener, 20))
 	settingsEngine.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeTCP4})
 
 	mediaEngine := &webrtc.MediaEngine{}
@@ -96,15 +116,142 @@ func (h *whepHandler) Init() error {
 	return nil
 }
 
-func (h *whepHandler) createWhepClient(path string, offer []byte) (answer []byte, err error) {
+func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
 	h.locker.Lock()
 	defer h.locker.Unlock()
-	return nil, nil
+	if _, ok := h.mapWhepClients[path]; ok {
+		return "", errors.New("whep client already exist")
+	}
+	pc, err := h.api.NewPeerConnection(webrtc.Configuration{})
+	if err != nil {
+		return "", err
+	}
+	videoTrack, err := webrtc.NewTrackLocalStaticSample(
+		webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264}, "video", "pion")
+	if err != nil {
+		return "", err
+	}
+	videoRtpSender, err := pc.AddTrack(videoTrack)
+	if err != nil {
+		return "", err
+	}
+	audioTrack, err := webrtc.NewTrackLocalStaticSample(
+		webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus}, "audio", "pion")
+	if err != nil {
+		return "", err
+	}
+	audioRtpSender, err := pc.AddTrack(audioTrack)
+	if err != nil {
+		return "", err
+	}
+	iceConnectedCtx, iceConnectedCtxCancel := context.WithCancel(context.Background())
+	go func() {
+		rtcpBuf := make([]byte, 1500)
+		for {
+			if _, _, rtcpErr := videoRtpSender.Read(rtcpBuf); rtcpErr != nil {
+				return
+			}
+		}
+	}()
+	go func() {
+		file, err := os.Open(h.videoFileName)
+		if err != nil {
+			panic(err)
+		}
+		defer func() {
+			file.Close()
+		}()
+		h264, err := h264reader.NewReader(file)
+		if err != nil {
+			panic(err)
+		}
+		<-iceConnectedCtx.Done()
+		ticker := time.NewTicker(h.h264FrameDuration)
+		for ; true; <-ticker.C {
+			nal, err := h264.NextNAL()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if err = videoTrack.WriteSample(media.Sample{Data: nal.Data, Duration: h.h264FrameDuration}); err != nil {
+				return
+			}
+		}
+	}()
+	go func() {
+		rtcpBuf := make([]byte, 1500)
+		for {
+			if _, _, rtcpErr := audioRtpSender.Read(rtcpBuf); rtcpErr != nil {
+				return
+			}
+		}
+	}()
+	go func() {
+		file, err := os.Open(h.audioFileName)
+		if err != nil {
+			panic(err)
+		}
+		defer func() {
+			file.Close()
+		}()
+		ogg, _, err := oggreader.NewWith(file)
+		if err != nil {
+			panic(err)
+		}
+		<-iceConnectedCtx.Done()
+		var lastGranule uint64
+		ticker := time.NewTicker(h.oggPageDuration)
+		for ; true; <-ticker.C {
+			pageData, pageHeader, err := ogg.ParseNextPage()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			sampleCount := float64(pageHeader.GranulePosition - lastGranule)
+			lastGranule = pageHeader.GranulePosition
+			sampleDuration := time.Duration((sampleCount/48000)*1000) * time.Millisecond
+			if err = audioTrack.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); err != nil {
+				return
+			}
+		}
+	}()
+	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		if connectionState == webrtc.ICEConnectionStateConnected {
+			iceConnectedCtxCancel()
+		}
+	})
+	if err := pc.SetRemoteDescription(webrtc.SessionDescription{
+		Type: webrtc.SDPTypeOffer,
+		SDP:  offerStr,
+	}); err != nil {
+		return "", err
+	}
+	answer, err := pc.CreateAnswer(nil)
+	if err != nil {
+		return "", err
+	}
+	if err = pc.SetLocalDescription(answer); err != nil {
+		return "", err
+	}
+	h.mapWhepClients[path] = pc
+	return answer.SDP, nil
 }
 
 func (h *whepHandler) deleteWhepClient(path string) error {
 	h.locker.Lock()
 	defer h.locker.Unlock()
+	pc, ok := h.mapWhepClients[path]
+	if !ok {
+		return errors.New("whep client not exist")
+	}
+	pc.Close()
+	delete(h.mapWhepClients, path)
 	return nil
 }
 
@@ -124,7 +271,7 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		answer, err := h.createWhepClient(r.URL.Path, offer)
+		answer, err := h.createWhepClient(r.URL.Path, string(offer))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -132,7 +279,7 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Location", strings.Join([]string{scheme, r.Host, r.URL.Path}, ""))
 		w.Header().Set("Content-Type", "application/sdp")
 		w.WriteHeader(http.StatusCreated)
-		w.Write(answer)
+		w.Write([]byte(answer))
 		return
 	case http.MethodDelete:
 		if err := h.deleteWhepClient(r.URL.Path); err != nil {
@@ -155,11 +302,15 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	h := &whepHandler{
-		httpAddr:   HTTP_ADDR,
-		allowExt:   WHEP_EXT,
-		candidates: []string{CANDIDATE},
-		iceUdpPort: ICE_UDP_PORT,
-		iceTcpPort: ICE_TCP_PORT,
+		httpAddr:          HTTP_ADDR,
+		allowExt:          WHEP_EXT,
+		candidates:        []string{CANDIDATE},
+		iceUdpPort:        ICE_UDP_PORT,
+		iceTcpPort:        ICE_TCP_PORT,
+		audioFileName:     AUDIO_FILE_NAME,
+		videoFileName:     VIDEO_FILE_NAME,
+		oggPageDuration:   OGG_PAGE_DURATION,
+		h264FrameDuration: H264_FRAME_DURATION,
 	}
 	if err := h.Init(); err != nil {
 		log.Panicln(err)
