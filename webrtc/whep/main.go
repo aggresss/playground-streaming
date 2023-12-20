@@ -223,8 +223,11 @@ func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
 	}()
 	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		log.Println("pc state change:", connectionState.String())
-		if connectionState == webrtc.ICEConnectionStateConnected {
+		switch connectionState {
+		case webrtc.ICEConnectionStateConnected:
 			iceConnectedCtxCancel()
+		case webrtc.ICEConnectionStateDisconnected, webrtc.ICEConnectionStateFailed:
+			h.deleteWhepClient(path)
 		}
 	})
 	if err := pc.SetRemoteDescription(webrtc.SessionDescription{
@@ -314,10 +317,14 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	candidates := []string{os.Getenv("CANDIDATE")}
+	if candidates[0] == "" {
+		candidates[0] = CANDIDATE
+	}
 	h := &whepHandler{
 		httpAddr:          HTTP_ADDR,
 		allowExt:          WHEP_EXT,
-		candidates:        []string{CANDIDATE},
+		candidates:        candidates,
 		iceUdpPort:        ICE_UDP_PORT,
 		iceTcpPort:        ICE_TCP_PORT,
 		audioFileName:     AUDIO_FILE_NAME,
