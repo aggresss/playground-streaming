@@ -222,6 +222,7 @@ func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
 		}
 	}()
 	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		log.Println("pc state change:", connectionState.String())
 		if connectionState == webrtc.ICEConnectionStateConnected {
 			iceConnectedCtxCancel()
 		}
@@ -236,11 +237,13 @@ func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	gatherComplete := webrtc.GatheringCompletePromise(pc)
 	if err = pc.SetLocalDescription(answer); err != nil {
 		return "", err
 	}
+	<-gatherComplete
 	h.mapWhepClients[path] = pc
-	return answer.SDP, nil
+	return pc.LocalDescription().SDP, nil
 }
 
 func (h *whepHandler) deleteWhepClient(path string) error {
@@ -262,6 +265,7 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Header.Get("Origin") != "" {
 		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 	}
 	switch r.Method {
 	case http.MethodPost:
