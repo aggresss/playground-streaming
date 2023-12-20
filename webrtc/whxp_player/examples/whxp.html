@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <base target="_blank">
+  <title>WHXP Demo</title>
+  <link rel="icon" sizes="32x32" href="./images/favicon.ico">
+  <link rel="stylesheet" href="./css/main.css" />
+  <link rel="stylesheet" href="./css/whxp.css" />
+
+</head>
+
+<body>
+  <div id="container">
+    <h1>
+      <span>WHXP Demo</span>
+    </h1>
+    <section id="whipSection">
+      <h2>WHIP</h2>
+      <div id="whip" class="whxpSection">
+        <video id="pubVideo" playsinline autoplay muted></video>
+        <canvas id="pubAudio"> </canvas>
+        <fieldset>
+          <legend>WHIP URL</legend>
+          <textarea id="whipUrl" class="textareaUrl" rows="1"></textarea>
+        </fieldset>
+        <fieldset>
+          <legend>WHIP Token</legend>
+          <textarea id="whipToken" class="textareaToken" rows="5"></textarea>
+        </fieldset>
+        <div>
+          <button id="whipStart">WHIP Start</button>
+          <button id="whipStop">WHIP Stop</button>
+        </div>
+      </div>
+    </section>
+    <section id="whepSection">
+      <h2>WHEP</h2>
+      <div id="whep" class="whxpSection">
+        <video id="subVideo" playsinline autoplay muted></video>
+        <video id="subAudioStub" playsinline autoplay muted></video>
+        <canvas id="subAudio"> </canvas>
+        <fieldset>
+          <legend>WHEP URL</legend>
+          <textarea id="whepUrl" class="textareaUrl" rows="1"></textarea>
+        </fieldset>
+        <fieldset>
+          <legend>WHEP Token</legend>
+          <textarea id="whepToken" class="textareaToken" rows="5"></textarea>
+        </fieldset>
+        <div>
+          <button id="whepStart">WHEP Start</button>
+          <button id="whepStop">WHEP Stop</button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src='./js/streamvisualizer.js'></script>
+  <script src='./js/whxp.js'></script>
+
+</body>
+
+</html>
