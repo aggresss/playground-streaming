@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	HTTP_ADDR           = ":8082"
+	HTTP_ADDR           = ":8080"
 	WHEP_EXT            = ".whep"
 	CANDIDATE           = "127.0.0.1"
 	ICE_UDP_PORT        = 5060
@@ -29,7 +29,7 @@ const (
 	AUDIO_FILE_NAME     = "output.ogg"
 	VIDEO_FILE_NAME     = "output.h264"
 	OGG_PAGE_DURATION   = time.Millisecond * 20
-	H264_FRAME_DURATION = time.Millisecond * 33
+	H264_FRAME_DURATION = time.Millisecond * 40
 )
 
 type whepHandler struct {
@@ -260,6 +260,9 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	if r.Header.Get("Origin") != "" {
+		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	}
 	switch r.Method {
 	case http.MethodPost:
 		scheme := "http://"
@@ -289,9 +292,15 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	case http.MethodOptions:
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST,DELETE,OPTIONS")
+		if r.Header.Get("Access-Control-Request-Method") != "" {
+			w.Header().Set("Access-Control-Allow-Methods", r.Header.Get("Access-Control-Request-Method"))
+		}
+		if r.Header.Get("Access-Control-Request-Headers") != "" {
+			w.Header().Set("Access-Control-Allow-Headers", r.Header.Get("Access-Control-Request-Headers"))
+		}
+		if r.Header.Get("Connection") != "" {
+			w.Header().Set("Connection", r.Header.Get("Connection"))
+		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	default:
@@ -313,7 +322,7 @@ func main() {
 		h264FrameDuration: H264_FRAME_DURATION,
 	}
 	if err := h.Init(); err != nil {
-		log.Panicln(err)
+		log.Fatal(err)
 	}
 	log.Println("whep demo running", h.httpAddr)
 	log.Fatal(http.ListenAndServe(h.httpAddr, h))
