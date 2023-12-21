@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	HTTP_ADDR           = ":8080"
+	HTTP_ADDR           = ":8082"
 	WHEP_EXT            = ".whep"
 	CANDIDATE           = "127.0.0.1"
 	ICE_UDP_PORT        = 5060
