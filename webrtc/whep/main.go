@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -22,7 +21,6 @@ import (
 
 const (
 	HTTP_ADDR           = ":8082"
-	WHEP_EXT            = ".whep"
 	CANDIDATE           = "127.0.0.1"
 	ICE_UDP_PORT        = 5060
 	ICE_TCP_PORT        = 5060
@@ -34,7 +32,6 @@ const (
 
 type whepHandler struct {
 	httpAddr          string
-	allowExt          string
 	candidates        []string
 	iceUdpPort        int
 	iceTcpPort        int
@@ -262,10 +259,6 @@ func (h *whepHandler) deleteWhepClient(path string) error {
 }
 
 func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if path.Ext(r.URL.Path) != h.allowExt {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 	if originHdr := r.Header.Get("Origin"); originHdr != "" {
 		w.Header().Set("Access-Control-Allow-Origin", originHdr)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -320,7 +313,6 @@ func main() {
 	}
 	h := &whepHandler{
 		httpAddr:          HTTP_ADDR,
-		allowExt:          WHEP_EXT,
 		candidates:        candidates,
 		iceUdpPort:        ICE_UDP_PORT,
 		iceTcpPort:        ICE_TCP_PORT,
