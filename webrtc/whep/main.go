@@ -27,7 +27,7 @@ const (
 	AUDIO_FILE_NAME     = "output.ogg"
 	VIDEO_FILE_NAME     = "output.h264"
 	OGG_PAGE_DURATION   = time.Millisecond * 20
-	H264_FRAME_DURATION = time.Millisecond * 33
+	H264_FRAME_DURATION = time.Millisecond * 41
 )
 
 type whepHandler struct {
