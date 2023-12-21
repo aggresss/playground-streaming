@@ -14,10 +14,6 @@ video {
   margin: 0 20px 10px 0;
 }
 
-video#subAudioStub {
-  display: none;
-}
-
 button {
   margin: 20px 10px 0 0;
   width: 120px;

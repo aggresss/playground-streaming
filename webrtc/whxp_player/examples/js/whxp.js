@@ -9,7 +9,6 @@ const whipStartButton = document.querySelector('#whipStart');
 const whipStopButton = document.querySelector('#whipStop');
 // WHEP
 const subVideoVideo = document.querySelector('#subVideo');
-const subAudioStubVideo = document.querySelector('#subAudioStub');
 const subAudioCanvas = document.querySelector('#subAudio');
 const whepUrlTextarea = document.querySelector('#whepUrl');
 const whepTokenTextarea = document.querySelector('#whepToken');
@@ -103,12 +102,12 @@ class WHIPClient {
 
 
 class WHEPClient {
-  constructor(endpoint, token, audioElement, videoElement, stubVideoElement) {
+  constructor(endpoint, token, audioElement, videoElement) {
     this.endpoint = endpoint;
     this.token = token;
     this.audioElement = audioElement;
     this.videoElement = videoElement;
-    this.stubVideoElement = stubVideoElement;
+    this.ms = new MediaStream();
 
     this.peerConnection = new RTCPeerConnection({
       bundlePolicy: 'max-bundle',
@@ -127,16 +126,15 @@ class WHEPClient {
 
     this.peerConnection.ontrack = (event) => {
       const track = event.track;
-      let ms = new MediaStream();
       switch (track.kind) {
         case "video":
-          ms.addTrack(track);
-          this.videoElement.srcObject = ms;
+          this.ms.addTrack(track);
+          this.videoElement.srcObject = this.ms;
           break;
         case "audio":
-          ms.addTrack(track);
-          this.stubVideoElement.srcObject = ms
-          this.streamVisualizer = new StreamVisualizer(ms, this.audioElement);
+          this.ms.addTrack(track);
+          this.videoElement.srcObject = this.ms
+          this.streamVisualizer = new StreamVisualizer(this.ms, this.audioElement);
           this.streamVisualizer.start();
           break;
         default:
@@ -223,7 +221,7 @@ function whipStop() {
 }
 
 function whepStart() {
-  whepClient = new WHEPClient(whepUrlTextarea.value, whepTokenTextarea.value, subAudioCanvas, subVideoVideo, subAudioStubVideo);
+  whepClient = new WHEPClient(whepUrlTextarea.value, whepTokenTextarea.value, subAudioCanvas, subVideoVideo);
 }
 
 function whepStop() {
