@@ -266,8 +266,8 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if r.Header.Get("Origin") != "" {
-		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	if originHdr := r.Header.Get("Origin"); originHdr != "" {
+		w.Header().Set("Access-Control-Allow-Origin", originHdr)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 	}
 	switch r.Method {
@@ -299,14 +299,11 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	case http.MethodOptions:
-		if r.Header.Get("Access-Control-Request-Method") != "" {
-			w.Header().Set("Access-Control-Allow-Methods", r.Header.Get("Access-Control-Request-Method"))
+		if reqMethodHdr := r.Header.Get("Access-Control-Request-Method"); reqMethodHdr != "" {
+			w.Header().Set("Access-Control-Allow-Methods", reqMethodHdr)
 		}
-		if r.Header.Get("Access-Control-Request-Headers") != "" {
-			w.Header().Set("Access-Control-Allow-Headers", r.Header.Get("Access-Control-Request-Headers"))
-		}
-		if r.Header.Get("Connection") != "" {
-			w.Header().Set("Connection", r.Header.Get("Connection"))
+		if reqHeadersHdr := r.Header.Get("Access-Control-Request-Headers"); reqHeadersHdr != "" {
+			w.Header().Set("Access-Control-Allow-Headers", reqHeadersHdr)
 		}
 		w.WriteHeader(http.StatusNoContent)
 		return
