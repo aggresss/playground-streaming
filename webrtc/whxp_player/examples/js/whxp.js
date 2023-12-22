@@ -133,7 +133,7 @@ class WHEPClient {
           break;
         case "audio":
           this.ms.addTrack(track);
-          this.videoElement.srcObject = this.ms
+          this.videoElement.srcObject = this.ms;
           this.streamVisualizer = new StreamVisualizer(this.ms, this.audioElement);
           this.streamVisualizer.start();
           break;
