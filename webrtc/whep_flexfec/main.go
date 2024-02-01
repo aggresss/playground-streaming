@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pion/interceptor"
+	"github.com/pion/interceptor/pkg/flexfec"
 	"github.com/pion/interceptor/pkg/nack"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
@@ -89,6 +90,18 @@ func (h *whepHandler) Init() error {
 		webrtc.RTPCodecTypeVideo); err != nil {
 		return err
 	}
+	if err := mediaEngine.RegisterCodec(
+		webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:    "video/flexfec-03",
+				SDPFmtpLine: "repair-window=10000000",
+				ClockRate:   90000,
+			},
+			PayloadType: 49,
+		},
+		webrtc.RTPCodecTypeVideo); err != nil {
+		return err
+	}
 	if err = mediaEngine.RegisterCodec(
 		webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
@@ -139,13 +152,24 @@ func registerDefaultInterceptors(mediaEngine *webrtc.MediaEngine, interceptorReg
 	interceptorRegistry.Add(responder)
 	interceptorRegistry.Add(generator)
 
+	// ConfigureFlexFEC
+	flexFec, err := flexfec.NewFecInterceptor()
+	if err != nil {
+		return err
+	}
+	interceptorRegistry.Add(flexFec)
+
 	// ConfigureRTCPReports
 	if err := webrtc.ConfigureRTCPReports(interceptorRegistry); err != nil {
 		return err
 	}
 
 	// ConfigureTWCCSender
-	return webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry)
+	if err := webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
