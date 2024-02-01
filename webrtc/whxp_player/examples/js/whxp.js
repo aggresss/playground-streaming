@@ -21,10 +21,10 @@ var whepClient = null;
 
 // Initialize
 window.onload = () => {
-  whipUrlTextarea.value = window.location.protocol + '//' + window.location.hostname + ':8080/live/livestream.whip';
+  whipUrlTextarea.value = window.location.protocol + '//' + window.location.hostname + ':8082/live/livestream.whip';
   whipStartButton.addEventListener('click', whipStart);
   whipStopButton.addEventListener('click', whipStop);
-  whepUrlTextarea.value = window.location.protocol + '//' + window.location.hostname + ':8080/live/livestream.whep';
+  whepUrlTextarea.value = window.location.protocol + '//' + window.location.hostname + ':8082/live/livestream.whep';
   whepStartButton.addEventListener('click', whepStart);
   whepStopButton.addEventListener('click', whepStop);
 }
@@ -117,10 +117,10 @@ class WHEPClient {
 
     console.log('whep peer connection created.')
 
-    this.peerConnection.addTransceiver("video", {
+    this.peerConnection.addTransceiver("audio", {
       direction: "recvonly",
     });
-    this.peerConnection.addTransceiver("audio", {
+    this.peerConnection.addTransceiver("video", {
       direction: "recvonly",
     });
 
@@ -178,13 +178,13 @@ class WHEPClient {
 // Performs the actual SDP exchange.
 async function negotiateConnectionWithClientOffer(peerConnection, endpoint, token) {
   const offer = await peerConnection.createOffer();
-  console.debug(`whxp client offer sdp:\n%c${offer.sdp}`, 'color:cyan');
+  console.log(`whxp client offer sdp:\n%c${offer.sdp}`, 'color:magenta');
   await peerConnection.setLocalDescription(offer);
   while (peerConnection.connectionState !== 'closed') {
     let response = await postSDPOffer(endpoint, token, offer.sdp);
     if (response.status === 201) {
       let answerSDP = await response.text();
-      console.debug(`whxp client answer sdp:\n%c${answerSDP}`, 'color:cyan');
+      console.log(`whxp client answer sdp:\n%c${answerSDP}`, 'color:cyan');
       await peerConnection.setRemoteDescription(
         new RTCSessionDescription({ type: 'answer', sdp: answerSDP })
       );
