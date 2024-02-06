@@ -15,10 +15,10 @@ import (
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/flexfec"
 	"github.com/pion/interceptor/pkg/nack"
-	"github.com/pion/webrtc/v3"
-	"github.com/pion/webrtc/v3/pkg/media"
-	"github.com/pion/webrtc/v3/pkg/media/h264reader"
-	"github.com/pion/webrtc/v3/pkg/media/oggreader"
+	"github.com/pion/webrtc/v4"
+	"github.com/pion/webrtc/v4/pkg/media"
+	"github.com/pion/webrtc/v4/pkg/media/h264reader"
+	"github.com/pion/webrtc/v4/pkg/media/oggreader"
 )
 
 const (
@@ -82,8 +82,8 @@ func (h *whepHandler) Init() error {
 		webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
 				MimeType:    webrtc.MimeTypeH264,
-				SDPFmtpLine: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
 				ClockRate:   90000,
+				SDPFmtpLine: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
 			},
 			PayloadType: 96,
 		},
@@ -93,9 +93,21 @@ func (h *whepHandler) Init() error {
 	if err := mediaEngine.RegisterCodec(
 		webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:    "video/flexfec-03",
-				SDPFmtpLine: "repair-window=10000000",
+				MimeType:    "video/rtx",
 				ClockRate:   90000,
+				SDPFmtpLine: "apt=96",
+			},
+			PayloadType: 97,
+		},
+		webrtc.RTPCodecTypeVideo); err != nil {
+		return err
+	}
+	if err := mediaEngine.RegisterCodec(
+		webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:    "video/flexfec-03",
+				ClockRate:   90000,
+				SDPFmtpLine: "repair-window=10000000",
 			},
 			PayloadType: 49,
 		},
