@@ -76,6 +76,9 @@ func (h *whepHandler) Init() error {
 	settingsEngine.SetICETCPMux(webrtc.NewICETCPMux(nil, tcplistener, 20))
 	settingsEngine.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeTCP4})
 
+	// nack
+	settingsEngine.SetEnableTrackLocalRtx(true)
+
 	mediaEngine := &webrtc.MediaEngine{}
 	if err := mediaEngine.RegisterCodec(
 		webrtc.RTPCodecParameters{

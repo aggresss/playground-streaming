@@ -1,6 +1,8 @@
 go 1.20
 
 use (
+	../../pion/interceptor
+	../../pion/webrtc
 	./m7s/demo
 	./matroska
 	./mp4
