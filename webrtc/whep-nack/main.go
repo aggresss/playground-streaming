@@ -78,6 +78,8 @@ func (h *whepHandler) Init() error {
 	settingsEngine.SetLite(true)
 	// nack
 	settingsEngine.SetTrackLocalRtx(true)
+	// ice protocol policy
+	settingsEngine.SetICEProtocolPolicy(webrtc.ICEProtocolPolicyPreferTCP)
 
 	mediaEngine := &webrtc.MediaEngine{}
 	if err := mediaEngine.RegisterCodec(
