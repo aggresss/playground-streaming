@@ -37,6 +37,11 @@ class WHIPClient {
     this.videoElement = videoElement;
 
     this.peerConnection = new RTCPeerConnection({
+      iceServers: [
+        {
+          urls: 'stun:stun.l.google.com:19302'
+        }
+      ],
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: "require",
       iceTransportPolicy: "all"

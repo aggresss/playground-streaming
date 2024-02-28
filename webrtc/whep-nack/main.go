@@ -23,8 +23,8 @@ import (
 const (
 	HTTP_ADDR           = ":8082"
 	CANDIDATE           = "127.0.0.1"
-	ICE_UDP_PORT        = 5060
-	ICE_TCP_PORT        = 5060
+	ICE_UDP_PORT        = 15060
+	ICE_TCP_PORT        = 15060
 	AUDIO_FILE_NAME     = "output.ogg"
 	VIDEO_FILE_NAME     = "output.h264"
 	OGG_PAGE_DURATION   = time.Millisecond * 20
@@ -58,6 +58,12 @@ func (h *whepHandler) Init() error {
 
 	settingsEngine := webrtc.SettingEngine{}
 	settingsEngine.SetNAT1To1IPs(h.candidates, webrtc.ICECandidateTypeHost)
+	settingsEngine.SetNetworkTypes([]webrtc.NetworkType{
+		webrtc.NetworkTypeUDP4,
+		webrtc.NetworkTypeTCP4,
+	})
+
+	// UDP listener
 	udplistener, err := net.ListenUDP("udp", &net.UDPAddr{
 		IP:   net.IP{0, 0, 0, 0},
 		Port: h.iceUdpPort,
@@ -66,6 +72,8 @@ func (h *whepHandler) Init() error {
 		return err
 	}
 	settingsEngine.SetICEUDPMux(webrtc.NewICEUDPMux(nil, udplistener))
+
+	// TCP listener
 	tcplistener, err := net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   net.IP{0, 0, 0, 0},
 		Port: h.iceTcpPort,
@@ -74,8 +82,9 @@ func (h *whepHandler) Init() error {
 		return err
 	}
 	settingsEngine.SetICETCPMux(webrtc.NewICETCPMux(nil, tcplistener, 20))
-	settingsEngine.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeTCP4})
+
 	settingsEngine.SetLite(true)
+
 	// nack
 	settingsEngine.SetTrackLocalRtx(true)
 	// ice protocol policy
