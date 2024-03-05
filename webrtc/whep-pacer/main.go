@@ -123,7 +123,10 @@ func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, e
 	})
 	settingsEngine.SetLite(params.ICELite)
 	settingsEngine.SetTrackLocalRtx(true)
-	settingsEngine.SetTrackLocalFlexfec(params.EnableFlexFEC)
+	settingsEngine.SetICEProtocolPolicy(params.ICEProtocolPolicy)
+	if params.ICEProtocolPolicy != webrtc.ICEProtocolPolicyPreferTCP {
+		settingsEngine.SetTrackLocalFlexfec(params.EnableFlexFEC)
+	}
 	// MediaEngine
 	mediaEngine := &webrtc.MediaEngine{}
 	for _, codec := range params.EnabledAudioCodecs {
@@ -338,6 +341,7 @@ func (h *whepHandler) createWhepClient(url *url.URL, offerStr string) (string, e
 	}
 	<-gatherComplete
 	h.mapWhepClients[url.Path] = pc
+	log.Println("Add WHEP Client:", url.Path)
 	return pc.LocalDescription().SDP, nil
 }
 
@@ -350,6 +354,7 @@ func (h *whepHandler) deleteWhepClient(url *url.URL) error {
 	}
 	pc.Close()
 	delete(h.mapWhepClients, url.Path)
+	log.Println("Remove WHEP Client:", url.Path)
 	return nil
 }
 
