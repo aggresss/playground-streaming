@@ -42,7 +42,7 @@ var (
 		},
 	}
 
-	defaultVideoCodec = []webrtc.RTPCodecParameters{
+	defaultVideoCodecs = []webrtc.RTPCodecParameters{
 		{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
 				MimeType:    webrtc.MimeTypeH264,
@@ -109,7 +109,7 @@ func (h *whepHandler) createWhepClient(url *url.URL, offerStr string) (string, e
 		ICEProtocolPolicy:  iceProtocolPolicy,
 		NAT1To1IPs:         h.iceNAT1To1IPs,
 		EnabledAudioCodecs: defaultAudioCodecs,
-		EnabledVideoCodecs: defaultVideoCodec,
+		EnabledVideoCodecs: defaultVideoCodecs,
 		EnableFlexFEC:      enableFlexFEC,
 		IsSendSide:         true,
 	})
