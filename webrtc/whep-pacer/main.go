@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/flexfec"
 	"github.com/pion/interceptor/pkg/nack"
@@ -33,59 +34,19 @@ const (
 	H264_FRAME_DURATION = time.Millisecond * 41
 )
 
-type whepHandler struct {
-	httpAddr          string
-	candidates        []string
-	iceUdpPort        int
-	iceTcpPort        int
-	audioFileName     string
-	videoFileName     string
-	oggPageDuration   time.Duration
-	h264FrameDuration time.Duration
-
-	locker         sync.RWMutex
-	mapWhepClients map[string]*webrtc.PeerConnection
-	api            *webrtc.API
-}
-
-func (h *whepHandler) Init() error {
-	h.mapWhepClients = make(map[string]*webrtc.PeerConnection)
-
-	if _, err := os.Stat(h.audioFileName); err != nil {
-		return err
-	}
-	if _, err := os.Stat(h.videoFileName); err != nil {
-		return err
+var (
+	defaultAudioCodecs = []webrtc.RTPCodecParameters{
+		{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:  webrtc.MimeTypeOpus,
+				ClockRate: 48000,
+			},
+			PayloadType: 111,
+		},
 	}
 
-	settingsEngine := webrtc.SettingEngine{}
-	settingsEngine.SetNAT1To1IPs(h.candidates, webrtc.ICECandidateTypeHost)
-	udplistener, err := net.ListenUDP("udp", &net.UDPAddr{
-		IP:   net.IP{0, 0, 0, 0},
-		Port: h.iceUdpPort,
-	})
-	if err != nil {
-		return err
-	}
-	settingsEngine.SetICEUDPMux(webrtc.NewICEUDPMux(nil, udplistener))
-	tcplistener, err := net.ListenTCP("tcp", &net.TCPAddr{
-		IP:   net.IP{0, 0, 0, 0},
-		Port: h.iceTcpPort,
-	})
-	if err != nil {
-		return err
-	}
-	settingsEngine.SetICETCPMux(webrtc.NewICETCPMux(nil, tcplistener, 20))
-	settingsEngine.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeTCP4})
-	settingsEngine.SetLite(true)
-	// nack
-	settingsEngine.SetTrackLocalRtx(true)
-	// flexfec
-	settingsEngine.SetTrackLocalFlexfec(true)
-
-	mediaEngine := &webrtc.MediaEngine{}
-	if err := mediaEngine.RegisterCodec(
-		webrtc.RTPCodecParameters{
+	defaultVideoCodec = []webrtc.RTPCodecParameters{
+		{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
 				MimeType:    webrtc.MimeTypeH264,
 				ClockRate:   90000,
@@ -93,11 +54,7 @@ func (h *whepHandler) Init() error {
 			},
 			PayloadType: 96,
 		},
-		webrtc.RTPCodecTypeVideo); err != nil {
-		return err
-	}
-	if err := mediaEngine.RegisterCodec(
-		webrtc.RTPCodecParameters{
+		{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
 				MimeType:    "video/rtx",
 				ClockRate:   90000,
@@ -105,11 +62,7 @@ func (h *whepHandler) Init() error {
 			},
 			PayloadType: 97,
 		},
-		webrtc.RTPCodecTypeVideo); err != nil {
-		return err
-	}
-	if err := mediaEngine.RegisterCodec(
-		webrtc.RTPCodecParameters{
+		{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
 				MimeType:    "video/flexfec-03",
 				ClockRate:   90000,
@@ -117,84 +70,127 @@ func (h *whepHandler) Init() error {
 			},
 			PayloadType: 49,
 		},
-		webrtc.RTPCodecTypeVideo); err != nil {
-		return err
 	}
-	if err = mediaEngine.RegisterCodec(
-		webrtc.RTPCodecParameters{
-			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:  webrtc.MimeTypeOpus,
-				ClockRate: 48000,
-			},
-			PayloadType: 111,
-		},
-		webrtc.RTPCodecTypeAudio); err != nil {
-		return err
-	}
+)
 
-	interceptorRegistry := &interceptor.Registry{}
-	if err := registerDefaultInterceptors(mediaEngine, interceptorRegistry); err != nil {
-		return err
-	}
+type whepHandler struct {
+	httpAddr   string
+	iceUDPPort int
+	iceTCPPort int
 
-	h.api = webrtc.NewAPI(
-		webrtc.WithSettingEngine(settingsEngine),
-		webrtc.WithMediaEngine(mediaEngine),
-		webrtc.WithInterceptorRegistry(interceptorRegistry))
+	iceUDPMux     ice.UDPMux
+	iceTCPMux     ice.TCPMux
+	iceNAT1To1IPs []string
 
-	return nil
+	audioFileName     string
+	videoFileName     string
+	oggPageDuration   time.Duration
+	h264FrameDuration time.Duration
+
+	mapWhepClients map[string]*webrtc.PeerConnection
+	locker         sync.RWMutex
 }
 
-func registerDefaultInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
-	// ConfigureNack
-	generator, err := nack.NewGeneratorInterceptor(
-		nack.GeneratorSize(512),
-		nack.GeneratorSkipLastN(0),
-		nack.GeneratorMaxNacksPerPacket(0),
-		nack.GeneratorInterval(time.Millisecond*100),
-	)
-	if err != nil {
-		return err
-	}
+type TransportParams struct {
+	Configuration      webrtc.Configuration
+	ICEUDPMux          ice.UDPMux
+	ICETCPMux          ice.TCPMux
+	ICELite            bool
+	ICEProtocolPolicy  webrtc.ICEProtocolPolicy
+	NAT1To1IPs         []string
+	EnabledAudioCodecs []webrtc.RTPCodecParameters
+	EnabledVideoCodecs []webrtc.RTPCodecParameters
+	EnableFlexFEC      bool
+	IsSendSide         bool
+}
 
-	responder, err := nack.NewResponderInterceptor(
-		// nack.ResponderSize(1024),
-		nack.ResponderSize(2048),
-	)
-	if err != nil {
-		return err
+func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, err error) {
+	// SettingsEngine
+	settingsEngine := webrtc.SettingEngine{}
+	if len(params.NAT1To1IPs) > 0 {
+		settingsEngine.SetNAT1To1IPs(params.NAT1To1IPs, webrtc.ICECandidateTypeHost)
 	}
-
+	if params.ICEUDPMux != nil {
+		settingsEngine.SetICEUDPMux(params.ICEUDPMux)
+	}
+	if params.ICETCPMux != nil {
+		settingsEngine.SetICETCPMux(params.ICETCPMux)
+	}
+	settingsEngine.SetNetworkTypes([]webrtc.NetworkType{
+		webrtc.NetworkTypeUDP4,
+		webrtc.NetworkTypeTCP4,
+	})
+	settingsEngine.SetLite(params.ICELite)
+	settingsEngine.SetTrackLocalRtx(true)
+	settingsEngine.SetTrackLocalFlexfec(params.EnableFlexFEC)
+	// MediaEngine
+	mediaEngine := &webrtc.MediaEngine{}
+	for _, codec := range params.EnabledAudioCodecs {
+		if err := mediaEngine.RegisterCodec(codec, webrtc.RTPCodecTypeAudio); err != nil {
+			return nil, err
+		}
+	}
+	for _, codec := range params.EnabledVideoCodecs {
+		if err := mediaEngine.RegisterCodec(codec, webrtc.RTPCodecTypeVideo); err != nil {
+			return nil, err
+		}
+	}
+	// InterceptorRegistry
+	interceptorRegistry := &interceptor.Registry{}
+	// Configure Nack
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack"}, webrtc.RTPCodecTypeVideo)
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack", Parameter: "pli"}, webrtc.RTPCodecTypeVideo)
-	interceptorRegistry.Add(responder)
-	interceptorRegistry.Add(generator)
-
+	if params.IsSendSide {
+		responder, err := nack.NewResponderInterceptor(
+			nack.ResponderSize(1024),
+		)
+		if err != nil {
+			return nil, err
+		}
+		interceptorRegistry.Add(responder)
+	} else {
+		generator, err := nack.NewGeneratorInterceptor(
+			nack.GeneratorSize(512),
+			nack.GeneratorSkipLastN(0),
+			nack.GeneratorMaxNacksPerPacket(0),
+			nack.GeneratorInterval(time.Millisecond*100),
+		)
+		if err != nil {
+			return nil, err
+		}
+		interceptorRegistry.Add(generator)
+	}
 	// Configure FlexFEC
-	flexFec, err := flexfec.NewFecInterceptor()
-	if err != nil {
-		return err
+	if params.EnableFlexFEC && params.IsSendSide {
+		flexFec, err := flexfec.NewFecInterceptor()
+		if err != nil {
+			return nil, err
+		}
+		interceptorRegistry.Add(flexFec)
 	}
-	interceptorRegistry.Add(flexFec)
-
-	// ConfigureRTCPReports
+	// Configure RTCP Reports
 	if err := webrtc.ConfigureRTCPReports(interceptorRegistry); err != nil {
-		return err
+		return nil, err
 	}
-
-	// ConfigureTWCCSender
-	if err := webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
-		return err
+	// Configure TWCC Sender
+	if params.IsSendSide {
+		if err := webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
+			return nil, err
+		}
 	}
-
 	// Configure Pacer
-	pacer, err := pacer.NewInterceptor()
-	if err != nil {
-		return err
+	if params.IsSendSide {
+		pacer, err := pacer.NewInterceptor()
+		if err != nil {
+			return nil, err
+		}
+		interceptorRegistry.Add(pacer)
 	}
-	interceptorRegistry.Add(pacer)
 
-	return nil
+	return webrtc.NewAPI(
+		webrtc.WithSettingEngine(settingsEngine),
+		webrtc.WithMediaEngine(mediaEngine),
+		webrtc.WithInterceptorRegistry(interceptorRegistry)).NewPeerConnection(params.Configuration)
 }
 
 func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
@@ -203,7 +199,17 @@ func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
 	if _, ok := h.mapWhepClients[path]; ok {
 		return "", errors.New("whep client already exist")
 	}
-	pc, err := h.api.NewPeerConnection(webrtc.Configuration{})
+	pc, err := createPeerConnection(&TransportParams{
+		ICEUDPMux:          h.iceUDPMux,
+		ICETCPMux:          h.iceTCPMux,
+		ICELite:            true,
+		ICEProtocolPolicy:  webrtc.ICEProtocolPolicyPreferUDP,
+		NAT1To1IPs:         h.iceNAT1To1IPs,
+		EnabledAudioCodecs: defaultAudioCodecs,
+		EnabledVideoCodecs: defaultVideoCodec,
+		EnableFlexFEC:      true,
+		IsSendSide:         true,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -390,6 +396,38 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *whepHandler) Init() error {
+	h.mapWhepClients = make(map[string]*webrtc.PeerConnection)
+	if _, err := os.Stat(h.audioFileName); err != nil {
+		return err
+	}
+	if _, err := os.Stat(h.videoFileName); err != nil {
+		return err
+	}
+	if h.iceUDPPort != 0 {
+		udplistener, err := net.ListenUDP("udp", &net.UDPAddr{
+			IP:   net.IP{0, 0, 0, 0},
+			Port: h.iceUDPPort,
+		})
+		if err != nil {
+			return err
+		}
+		h.iceUDPMux = webrtc.NewICEUDPMux(nil, udplistener)
+	}
+	if h.iceTCPPort != 0 {
+		tcplistener, err := net.ListenTCP("tcp", &net.TCPAddr{
+			IP:   net.IP{0, 0, 0, 0},
+			Port: h.iceTCPPort,
+		})
+		if err != nil {
+			return err
+		}
+		h.iceTCPMux = webrtc.NewICETCPMux(nil, tcplistener, 20)
+	}
+
+	return nil
+}
+
 func main() {
 	candidates := []string{os.Getenv("CANDIDATE")}
 	if candidates[0] == "" {
@@ -397,9 +435,9 @@ func main() {
 	}
 	h := &whepHandler{
 		httpAddr:          HTTP_ADDR,
-		candidates:        candidates,
-		iceUdpPort:        ICE_UDP_PORT,
-		iceTcpPort:        ICE_TCP_PORT,
+		iceNAT1To1IPs:     candidates,
+		iceUDPPort:        ICE_UDP_PORT,
+		iceTCPPort:        ICE_TCP_PORT,
 		audioFileName:     AUDIO_FILE_NAME,
 		videoFileName:     VIDEO_FILE_NAME,
 		oggPageDuration:   OGG_PAGE_DURATION,
