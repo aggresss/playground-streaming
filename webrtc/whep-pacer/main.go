@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -153,7 +154,7 @@ func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, e
 			nack.GeneratorSize(512),
 			nack.GeneratorSkipLastN(0),
 			nack.GeneratorMaxNacksPerPacket(0),
-			nack.GeneratorInterval(time.Millisecond*100),
+			nack.GeneratorInterval(time.Millisecond*40),
 		)
 		if err != nil {
 			return nil, err
@@ -193,17 +194,21 @@ func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, e
 		webrtc.WithInterceptorRegistry(interceptorRegistry)).NewPeerConnection(params.Configuration)
 }
 
-func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
+func (h *whepHandler) createWhepClient(url *url.URL, offerStr string) (string, error) {
 	h.locker.Lock()
 	defer h.locker.Unlock()
-	if _, ok := h.mapWhepClients[path]; ok {
+	if _, ok := h.mapWhepClients[url.Path]; ok {
 		return "", errors.New("whep client already exist")
+	}
+	iceProtocolPolicy := webrtc.ICEProtocolPolicyPreferUDP
+	if url.Query().Get("transport") == "tcp" {
+		iceProtocolPolicy = webrtc.ICEProtocolPolicyPreferTCP
 	}
 	pc, err := createPeerConnection(&TransportParams{
 		ICEUDPMux:          h.iceUDPMux,
 		ICETCPMux:          h.iceTCPMux,
 		ICELite:            true,
-		ICEProtocolPolicy:  webrtc.ICEProtocolPolicyPreferUDP,
+		ICEProtocolPolicy:  iceProtocolPolicy,
 		NAT1To1IPs:         h.iceNAT1To1IPs,
 		EnabledAudioCodecs: defaultAudioCodecs,
 		EnabledVideoCodecs: defaultVideoCodec,
@@ -314,7 +319,7 @@ func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
 		case webrtc.ICEConnectionStateConnected:
 			iceConnectedCtxCancel()
 		case webrtc.ICEConnectionStateDisconnected, webrtc.ICEConnectionStateFailed:
-			h.deleteWhepClient(path)
+			h.deleteWhepClient(url)
 		}
 	})
 	if err := pc.SetRemoteDescription(webrtc.SessionDescription{
@@ -332,19 +337,19 @@ func (h *whepHandler) createWhepClient(path, offerStr string) (string, error) {
 		return "", err
 	}
 	<-gatherComplete
-	h.mapWhepClients[path] = pc
+	h.mapWhepClients[url.Path] = pc
 	return pc.LocalDescription().SDP, nil
 }
 
-func (h *whepHandler) deleteWhepClient(path string) error {
+func (h *whepHandler) deleteWhepClient(url *url.URL) error {
 	h.locker.Lock()
 	defer h.locker.Unlock()
-	pc, ok := h.mapWhepClients[path]
+	pc, ok := h.mapWhepClients[url.Path]
 	if !ok {
 		return errors.New("whep client not exist")
 	}
 	pc.Close()
-	delete(h.mapWhepClients, path)
+	delete(h.mapWhepClients, url.Path)
 	return nil
 }
 
@@ -364,7 +369,7 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		answer, err := h.createWhepClient(r.URL.Path, string(offer))
+		answer, err := h.createWhepClient(r.URL, string(offer))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -375,7 +380,7 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(answer))
 		return
 	case http.MethodDelete:
-		if err := h.deleteWhepClient(r.URL.Path); err != nil {
+		if err := h.deleteWhepClient(r.URL); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
