@@ -60,6 +60,22 @@ func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, e
 	}
 	// InterceptorRegistry
 	interceptorRegistry := &interceptor.Registry{}
+	// Configure Pacer
+	if params.IsSendSide {
+		pacer, err := pacer.NewInterceptor()
+		if err != nil {
+			return nil, err
+		}
+		interceptorRegistry.Add(pacer)
+	}
+	// Configure FlexFEC
+	if params.EnableFlexFEC && params.IsSendSide {
+		flexFec, err := flexfec.NewFecInterceptor()
+		if err != nil {
+			return nil, err
+		}
+		interceptorRegistry.Add(flexFec)
+	}
 	// Configure Nack
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack"}, webrtc.RTPCodecTypeVideo)
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack", Parameter: "pli"}, webrtc.RTPCodecTypeVideo)
@@ -83,14 +99,6 @@ func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, e
 		}
 		interceptorRegistry.Add(generator)
 	}
-	// Configure FlexFEC
-	if params.EnableFlexFEC && params.IsSendSide {
-		flexFec, err := flexfec.NewFecInterceptor()
-		if err != nil {
-			return nil, err
-		}
-		interceptorRegistry.Add(flexFec)
-	}
 	// Configure RTCP Reports
 	if err := webrtc.ConfigureRTCPReports(interceptorRegistry); err != nil {
 		return nil, err
@@ -100,14 +108,6 @@ func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, e
 		if err := webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
 			return nil, err
 		}
-	}
-	// Configure Pacer
-	if params.IsSendSide {
-		pacer, err := pacer.NewInterceptor()
-		if err != nil {
-			return nil, err
-		}
-		interceptorRegistry.Add(pacer)
 	}
 
 	return webrtc.NewAPI(
