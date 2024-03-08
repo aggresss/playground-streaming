@@ -27,19 +27,21 @@ type TransportParams struct {
 func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, err error) {
 	// SettingsEngine
 	settingsEngine := webrtc.SettingEngine{}
+	networkTypes := []webrtc.NetworkType{}
 	if len(params.NAT1To1IPs) > 0 {
 		settingsEngine.SetNAT1To1IPs(params.NAT1To1IPs, webrtc.ICECandidateTypeHost)
 	}
 	if params.ICEUDPMux != nil {
 		settingsEngine.SetICEUDPMux(params.ICEUDPMux)
+		networkTypes = append(networkTypes, webrtc.NetworkTypeUDP4)
 	}
 	if params.ICETCPMux != nil {
 		settingsEngine.SetICETCPMux(params.ICETCPMux)
+		networkTypes = append(networkTypes, webrtc.NetworkTypeTCP4)
 	}
-	settingsEngine.SetNetworkTypes([]webrtc.NetworkType{
-		webrtc.NetworkTypeUDP4,
-		webrtc.NetworkTypeTCP4,
-	})
+	if len(networkTypes) > 0 {
+		settingsEngine.SetNetworkTypes(networkTypes)
+	}
 	settingsEngine.SetLite(params.ICELite)
 	settingsEngine.SetTrackLocalRtx(true)
 	settingsEngine.SetICEProtocolPolicy(params.ICEProtocolPolicy)
