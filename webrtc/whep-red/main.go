@@ -40,6 +40,13 @@ var (
 			},
 			PayloadType: 111,
 		},
+		{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:  webrtc.MimeTypeRed,
+				ClockRate: 48000,
+			},
+			PayloadType: 63,
+		},
 	}
 
 	defaultVideoCodecs = []webrtc.RTPCodecParameters{
