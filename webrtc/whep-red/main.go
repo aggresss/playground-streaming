@@ -38,14 +38,15 @@ var (
 				MimeType:  webrtc.MimeTypeOpus,
 				ClockRate: 48000,
 			},
-			PayloadType: 111,
+			PayloadType: 112,
 		},
 		{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:  webrtc.MimeTypeRed,
-				ClockRate: 48000,
+				MimeType:    webrtc.MimeTypeRed,
+				ClockRate:   48000,
+				SDPFmtpLine: "112/112",
 			},
-			PayloadType: 63,
+			PayloadType: 64,
 		},
 	}
 
