@@ -8,6 +8,7 @@ import (
 	"github.com/pion/interceptor/pkg/flexfec"
 	"github.com/pion/interceptor/pkg/nack"
 	"github.com/pion/interceptor/pkg/pacer"
+	"github.com/pion/interceptor/pkg/red"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -21,6 +22,7 @@ type TransportParams struct {
 	EnabledAudioCodecs []webrtc.RTPCodecParameters
 	EnabledVideoCodecs []webrtc.RTPCodecParameters
 	EnableFlexFEC      bool
+	EnableRed          bool
 	IsSendSide         bool
 }
 
@@ -71,12 +73,20 @@ func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, e
 		interceptorRegistry.Add(pacer)
 	}
 	// Configure FlexFEC
-	if params.EnableFlexFEC && params.IsSendSide {
+	if params.EnableFlexFEC && params.IsSendSide && params.ICEProtocolPolicy != webrtc.ICEProtocolPolicyPreferTCP {
 		flexFec, err := flexfec.NewFecInterceptor()
 		if err != nil {
 			return nil, err
 		}
 		interceptorRegistry.Add(flexFec)
+	}
+	// Configure RED
+	if params.EnableRed && params.IsSendSide && params.ICEProtocolPolicy != webrtc.ICEProtocolPolicyPreferTCP {
+		red, err := red.NewInterceptor()
+		if err != nil {
+			return nil, err
+		}
+		interceptorRegistry.Add(red)
 	}
 	// Configure Nack
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack"}, webrtc.RTPCodecTypeVideo)

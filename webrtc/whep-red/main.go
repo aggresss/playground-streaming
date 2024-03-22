@@ -110,6 +110,10 @@ func (h *whepHandler) createWhepClient(url *url.URL, offerStr string) (string, e
 	if url.Query().Get("flexfec") == "disable" {
 		enableFlexFEC = false
 	}
+	enableRed := true
+	if url.Query().Get("red") == "disable" {
+		enableRed = false
+	}
 	pc, err := createPeerConnection(&TransportParams{
 		ICEUDPMux:          h.iceUDPMux,
 		ICETCPMux:          h.iceTCPMux,
@@ -119,6 +123,7 @@ func (h *whepHandler) createWhepClient(url *url.URL, offerStr string) (string, e
 		EnabledAudioCodecs: defaultAudioCodecs,
 		EnabledVideoCodecs: defaultVideoCodecs,
 		EnableFlexFEC:      enableFlexFEC,
+		EnableRed:          enableRed,
 		IsSendSide:         true,
 	})
 	if err != nil {
