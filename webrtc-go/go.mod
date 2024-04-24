@@ -1,4 +1,4 @@
-module github.com/aggresss/playground-streaming/webrtc
+module github.com/aggresss/playground-streaming/webrtc-go
 
 go 1.20
 

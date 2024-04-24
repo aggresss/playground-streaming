@@ -7,5 +7,5 @@ use (
 	./matroska
 	./mp4
 	./rtp/rtp-over-wt
-	./webrtc
+	./webrtc-go
 )

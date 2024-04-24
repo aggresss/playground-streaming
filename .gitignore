@@ -30,3 +30,7 @@
 ## temp file
 *.sdp
 *.log
+
+# Added by cargo
+
+/target
