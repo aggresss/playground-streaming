@@ -22,7 +22,8 @@ var whepClient03 = null;
 
 // Initialize
 window.onload = () => {
-  var baseUrl = window.location.protocol + '//' + window.location.hostname + ':8082';
+  //var baseUrl = window.location.protocol + '//' + window.location.hostname + ':8082';
+  var baseUrl = 'http://whep.traitx.cn:8080';
   whepUrlTextarea01.value = baseUrl + '/live/test01.whep';
   whepUrlTextarea02.value = baseUrl + '/live/test02.whep';
   whepUrlTextarea03.value = baseUrl + '/live/test03.whep';

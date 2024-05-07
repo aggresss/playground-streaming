@@ -38,3 +38,8 @@ fieldset {
   margin: 0 10px 0;
   width: 90%;
 }
+
+.marker {
+  margin: 0 5px 0;
+  color: #FF0000
+}
