@@ -41,5 +41,6 @@ fieldset {
 
 .marker {
   margin: 0 5px 0;
-  color: #FF0000
+  color: #FF0000;
+  font-weight: bold;
 }
