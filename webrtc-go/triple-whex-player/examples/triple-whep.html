@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <base target="_blank">
+  <title>Triple WHEP Demo</title>
+  <link rel="icon" sizes="32x32" href="./images/favicon.ico">
+  <link rel="stylesheet" href="./css/main.css" />
+  <link rel="stylesheet" href="./css/whxp.css" />
+
+</head>
+
+<body>
+  <div id="container">
+    <h1>
+      <span>Triple WHEP Demo</span>
+    </h1>
+    <section id="whepSection">
+      <div id="whep01" class="whxpSection">
+        <video id="subVideo01" playsinline autoplay></video>
+        <canvas id="subAudio01"> </canvas>
+      </div>
+      <div id="whep02" class="whxpSection">
+        <video id="subVideo02" playsinline autoplay muted></video>
+        <canvas id="subAudio02"> </canvas>
+      </div>
+      <div id="whep03" class="whxpSection">
+        <video id="subVideo03" playsinline autoplay muted></video>
+        <canvas id="subAudio03"> </canvas>
+      </div>
+    </section>
+    <section id="control">
+      <fieldset>
+        <legend>WHEP URL</legend>
+        <textarea id="whepUrl01" class="textareaUrl" rows="1"></textarea>
+        <textarea id="whepUrl02" class="textareaUrl" rows="1"></textarea>
+        <textarea id="whepUrl03" class="textareaUrl" rows="1"></textarea>
+      </fieldset>
+      <div>
+        <button id="whepStart">WHEP Start</button>
+        <button id="whepStop">WHEP Stop</button>
+      </div>
+    </section>
+  </div>
+  <script src='./js/streamvisualizer.js'></script>
+  <script src='./js/whxp.js'></script>
+
+</body>
+
+</html>

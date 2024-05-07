@@ -1,0 +1,40 @@
+canvas {
+  background-color: #666;
+  vertical-align: top;
+  --width: 45%;
+  width: var(--width);
+  height: calc(var(--width) * 0.75);
+}
+
+video {
+  vertical-align: top;
+  --width: 45%;
+  width: var(--width);
+  height: calc(var(--width) * 0.75);
+  margin: 0 20px 10px 0;
+}
+
+button {
+  margin: 20px 10px 0 0;
+  width: 120px;
+}
+
+fieldset {
+  margin: 15px 0 0;
+}
+
+.whxpSection {
+  margin: 20px 0 0;
+  border: 1px solid #666;
+  padding: 10px;
+}
+
+.textareaUrl {
+  margin: 0 10px 0;
+  width: 90%;
+}
+
+.textareaToken {
+  margin: 0 10px 0;
+  width: 90%;
+}
