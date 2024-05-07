@@ -369,6 +369,7 @@ func (h *whepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		w.Header().Set("Access-Control-Expose-Headers", "Location")
 		w.Header().Set("Location", strings.Join([]string{scheme, r.Host, r.URL.Path}, ""))
 		w.Header().Set("Content-Type", "application/sdp")
 		w.WriteHeader(http.StatusCreated)
