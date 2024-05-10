@@ -34,3 +34,8 @@
 # Added by cargo
 
 /target
+
+# custom
+*.h264
+*.ogg
+whep*
