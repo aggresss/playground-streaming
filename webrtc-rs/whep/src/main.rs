@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-
+use clap::Parser;
 use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
@@ -13,25 +14,36 @@ use hyper::{body::Incoming as IncomingBody, Method, Request, Response, StatusCod
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
-static HTTP_ADDR: &str = "0.0.0.0:8082";
-static CANDIDATE: &str = "127.0.0.1";
-static ICE_UDP_PORT: u16 = 15060;
-static ICE_TCP_PORT: u16 = 15060;
-static AUDIO_FILE_NAME: &str = "output.ogg";
-static VIDEO_FILE_NAME: &str = "output.h264";
-static OGG_PAGE_DURATION: Duration = Duration::from_millis(20);
-static H264_FRAME_DURATION: Duration = Duration::from_millis(41);
-
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
 #[derive(Debug, Clone)]
 struct WhepHandler {
-    // http_addr: String,
-    // candidates: Vec<String>,
-    // ice_udp_port: u16,
-    // ice_tcp_port: u16,
-    // audio_file_name: String,
-    // video_file_name: String,
-    // ogg_page_duration: Duration,
-    // h264_frame_duration: Duration,
+    #[arg(short, long, default_value = "0.0.0.0:8082")]
+    listen_addr: String,
+
+    #[arg(short, long, default_value = "127.0.0.1", env = "CANDIDATES")]
+    candidates: Vec<String>,
+
+    #[arg(short = 'u', long, default_value_t = 15060)]
+    ice_udp_port: u16,
+
+    #[arg(short = 't', long, default_value_t = 15060)]
+    ice_tcp_port: u16,
+
+    #[arg(short, long, default_value = "output.ogg")]
+    audio_file_name: String,
+
+    #[arg(short, long, default_value = "output.h264")]
+    video_file_name: String,
+
+    #[arg(short = 'p', long, default_value = "20")]
+    ogg_page_ms: usize,
+
+    #[arg(short = 'f', long, default_value = "41")]
+    h264_frame_ms: usize,
+
+    #[arg(skip)]
+    whep_clients: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,7 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Listening on http://{}", addr);
 
     let svc = Svc {
-        whep: Arc::new(Mutex::new(WhepHandler{})),
+        whep: Arc::new(Mutex::new(WhepHandler::parse())),
     };
     loop {
         let (stream, _) = listener.accept().await?;
@@ -105,10 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let svc_clone = svc.clone();
         tokio::task::spawn(async move {
-            if let Err(err) = http1::Builder::new()
-                .serve_connection(io, svc_clone)
-                .await
-            {
+            if let Err(err) = http1::Builder::new().serve_connection(io, svc_clone).await {
                 println!("Error serving connection: {:?}", err);
             }
         });
