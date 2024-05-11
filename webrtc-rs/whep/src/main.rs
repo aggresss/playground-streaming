@@ -46,6 +46,20 @@ struct WhepHandler {
     whep_clients: HashMap<String, String>,
 }
 
+impl WhepHandler {
+    fn create_whep_client(
+        &mut self,
+        path: &str,
+        offer: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        Ok("".into())
+    }
+
+    fn delete_whep_client(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Svc {
     whep: Arc<Mutex<WhepHandler>>,
@@ -103,7 +117,9 @@ impl Service<Request<IncomingBody>> for Svc {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let whep_handler = WhepHandler::parse();
-    let addr: SocketAddr = whep_handler.listen_addr.clone()
+    let addr: SocketAddr = whep_handler
+        .listen_addr
+        .clone()
         .parse()
         .expect("Unable to parse socket address");
     let listener = TcpListener::bind(addr).await?;
