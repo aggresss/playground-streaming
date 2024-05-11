@@ -102,14 +102,15 @@ impl Service<Request<IncomingBody>> for Svc {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let addr: SocketAddr = "0.0.0.0:8082"
+    let whep_handler = WhepHandler::parse();
+    let addr: SocketAddr = whep_handler.listen_addr.clone()
         .parse()
         .expect("Unable to parse socket address");
     let listener = TcpListener::bind(addr).await?;
     println!("Listening on http://{}", addr);
 
     let svc = Svc {
-        whep: Arc::new(Mutex::new(WhepHandler::parse())),
+        whep: Arc::new(Mutex::new(whep_handler)),
     };
     loop {
         let (stream, _) = listener.accept().await?;
