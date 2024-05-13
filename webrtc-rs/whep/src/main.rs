@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use clap::Parser;
-use http_body_util::Full;
+use http_body_util::{BodyExt, Full};
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
 use hyper::service::Service;
@@ -258,9 +258,7 @@ impl WhepHandler {
         let _ = gather_complete.recv().await;
 
         match peer_connection.local_description().await {
-            Some(local_desc) => {
-                return Ok(local_desc.sdp.into())
-            }
+            Some(local_desc) => return Ok(local_desc.sdp.into()),
             _ => {
                 return Err(Error::new(format!("generate answer failed")).into());
             }
@@ -296,15 +294,28 @@ impl Service<Request<IncomingBody>> for Svc {
             builder = builder.header("Access-Control-Allow-Credentials", "true");
         }
 
-        let res = match req.method() {
-            &Method::POST => Ok(builder
-                .status(StatusCode::NOT_FOUND)
-                .body(Full::new(Bytes::from("")))
-                .unwrap()),
-            &Method::DELETE => Ok(builder
-                .status(StatusCode::NOT_FOUND)
-                .body(Full::new(Bytes::from("")))
-                .unwrap()),
+        match req.method() {
+            &Method::POST => {
+                return Box::pin(async {
+                    // let lock = self.whep.lock();
+                    // let whep_handler = &mut lock.unwrap();
+                    // let whep_client = whep_handler
+                    //     .create_whep_client(req.uri().path(), req.collect().await.);
+
+                    Ok(builder
+                        .status(StatusCode::NOT_FOUND)
+                        .body(Full::new(Bytes::from("")))
+                        .unwrap())
+                });
+            }
+            &Method::DELETE => {
+                return Box::pin(async {
+                    Ok(builder
+                        .status(StatusCode::NOT_FOUND)
+                        .body(Full::new(Bytes::from("")))
+                        .unwrap())
+                });
+            }
             &Method::OPTIONS => {
                 if req.headers().contains_key("Access-Control-Request-Method") {
                     builder = builder.header(
@@ -322,18 +333,22 @@ impl Service<Request<IncomingBody>> for Svc {
                             .unwrap(),
                     )
                 }
-                Ok(builder
-                    .status(StatusCode::NO_CONTENT)
-                    .body(Full::new(Bytes::from("")))
-                    .unwrap())
+                return Box::pin(async {
+                    Ok(builder
+                        .status(StatusCode::NO_CONTENT)
+                        .body(Full::new(Bytes::from("")))
+                        .unwrap())
+                });
             }
-            _ => Ok(builder
-                .status(StatusCode::NOT_FOUND)
-                .body(Full::new(Bytes::from("")))
-                .unwrap()),
+            _ => {
+                return Box::pin(async {
+                    Ok(builder
+                        .status(StatusCode::NOT_FOUND)
+                        .body(Full::new(Bytes::from("")))
+                        .unwrap())
+                });
+            }
         };
-
-        Box::pin(async { res })
     }
 }
 
