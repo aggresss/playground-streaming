@@ -297,6 +297,9 @@ impl Service<Request<IncomingBody>> for Svc {
         match req.method() {
             &Method::POST => {
                 return Box::pin(async {
+                    let offer_str =
+                        String::from_utf8(req.collect().await?.to_bytes().to_vec()).unwrap();
+
                     // let lock = self.whep.lock();
                     // let whep_handler = &mut lock.unwrap();
                     // let whep_client = whep_handler
