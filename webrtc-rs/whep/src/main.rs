@@ -66,7 +66,7 @@ struct WhepHandler {
     h264_frame_ms: u64,
 
     #[arg(skip)]
-    whep_clients: HashMap<String, Arc<RTCPeerConnection>>,
+    whep_clients: Arc<Mutex<HashMap<String, Arc<RTCPeerConnection>>>>,
 }
 
 impl WhepHandler {
@@ -80,6 +80,14 @@ impl WhepHandler {
             return Err(Error::new(format!("audio file: '{audio_path}' not exist")).into());
         }
         Ok(())
+    }
+
+    fn add_client(&self, path: &str, pc: Arc<RTCPeerConnection>) {
+        self.whep_clients.lock().unwrap().insert(String::from(path), pc.clone());
+    }
+
+    fn delete_client(&self, path: &str) {
+        self.whep_clients.lock().unwrap().remove(path);
     }
 
     async fn create_whep_client(
@@ -260,7 +268,7 @@ impl WhepHandler {
 
         match peer_connection.local_description().await {
             Some(local_desc) => {
-                // self.whep_clients.insert(String::from(path), peer_connection.clone());
+                self.add_client(path, peer_connection);
                 return Ok(local_desc.sdp.into())
             }
             _ => {
