@@ -31,6 +31,7 @@ use webrtc::media::Sample;
 use webrtc::peer_connection::configuration::RTCConfiguration;
 use webrtc::peer_connection::peer_connection_state::RTCPeerConnectionState;
 use webrtc::peer_connection::sdp::session_description::RTCSessionDescription;
+use webrtc::peer_connection::RTCPeerConnection;
 use webrtc::rtp_transceiver::rtp_codec::RTCRtpCodecCapability;
 use webrtc::track::track_local::track_local_static_sample::TrackLocalStaticSample;
 use webrtc::track::track_local::TrackLocal;
@@ -65,7 +66,7 @@ struct WhepHandler {
     h264_frame_ms: u64,
 
     #[arg(skip)]
-    whep_clients: HashMap<String, String>,
+    whep_clients: HashMap<String, Arc<RTCPeerConnection>>,
 }
 
 impl WhepHandler {
@@ -258,7 +259,10 @@ impl WhepHandler {
         let _ = gather_complete.recv().await;
 
         match peer_connection.local_description().await {
-            Some(local_desc) => return Ok(local_desc.sdp.into()),
+            Some(local_desc) => {
+                // self.whep_clients.insert(String::from(path), peer_connection.clone());
+                return Ok(local_desc.sdp.into())
+            }
             _ => {
                 return Err(Error::new(format!("generate answer failed")).into());
             }
@@ -285,6 +289,7 @@ impl Service<Request<IncomingBody>> for Svc {
 
     fn call(&self, req: Request<IncomingBody>) -> Self::Future {
         let mut builder = Response::builder();
+        let path = String::from(req.uri().path());
 
         if req.headers().contains_key("Origin") {
             builder = builder.header(
@@ -298,10 +303,8 @@ impl Service<Request<IncomingBody>> for Svc {
             &Method::POST => {
                 let svc = self.clone();
                 return Box::pin(async move {
-
                     let offer_str = String::from_utf8(req.collect().await?.to_bytes().to_vec()).unwrap();
-                    let answer_str = svc.whep.create_whep_client("", offer_str.as_str()).await.unwrap();
-
+                    let answer_str = svc.whep.create_whep_client(path.as_str(), offer_str.as_str()).await.unwrap();
                     Ok(builder
                         .header("Content-Type", "application/sdp")
                         .status(StatusCode::CREATED)
