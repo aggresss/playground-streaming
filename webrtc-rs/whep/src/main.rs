@@ -82,7 +82,7 @@ impl WhepHandler {
     }
 
     async fn create_whep_client(
-        &mut self,
+        &self,
         path: &str,
         offer_str: &str,
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
@@ -275,7 +275,7 @@ impl WhepHandler {
 
 #[derive(Debug, Clone)]
 struct Svc {
-    whep: Arc<Mutex<WhepHandler>>,
+    whep: Arc<WhepHandler>,
 }
 
 impl Service<Request<IncomingBody>> for Svc {
@@ -296,18 +296,16 @@ impl Service<Request<IncomingBody>> for Svc {
 
         match req.method() {
             &Method::POST => {
-                return Box::pin(async {
-                    let offer_str =
-                        String::from_utf8(req.collect().await?.to_bytes().to_vec()).unwrap();
+                let svc = self.clone();
+                return Box::pin(async move {
 
-                    // let lock = self.whep.lock();
-                    // let whep_handler = &mut lock.unwrap();
-                    // let whep_client = whep_handler
-                    //     .create_whep_client(req.uri().path(), req.collect().await.);
+                    let offer_str = String::from_utf8(req.collect().await?.to_bytes().to_vec()).unwrap();
+                    let answer_str = svc.whep.create_whep_client("", offer_str.as_str()).await.unwrap();
 
                     Ok(builder
-                        .status(StatusCode::NOT_FOUND)
-                        .body(Full::new(Bytes::from("")))
+                        .header("Content-Type", "application/sdp")
+                        .status(StatusCode::CREATED)
+                        .body(Full::new(Bytes::from(answer_str)))
                         .unwrap())
                 });
             }
@@ -369,7 +367,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     whep_handler.init()?;
 
     let svc = Svc {
-        whep: Arc::new(Mutex::new(whep_handler)),
+        whep: Arc::new(whep_handler),
     };
 
     loop {
