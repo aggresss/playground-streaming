@@ -120,7 +120,7 @@ impl WhepHandler {
         let notify_video = notify_tx.clone();
         let notify_audio = notify_tx.clone();
 
-        let (done_tx, mut done_rx) = tokio::sync::mpsc::channel::<()>(1);
+        let (done_tx, _done_rx) = tokio::sync::mpsc::channel::<()>(1);
         let video_done_tx = done_tx.clone();
         let audio_done_tx = done_tx.clone();
 
@@ -277,10 +277,11 @@ impl WhepHandler {
         }
     }
 
-    fn delete_whep_client(
-        &mut self,
+    async fn delete_whep_client(
+        &self,
         path: &str,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.delete_client(path);
         Ok(())
     }
 }
@@ -321,9 +322,11 @@ impl Service<Request<IncomingBody>> for Svc {
                 });
             }
             &Method::DELETE => {
-                return Box::pin(async {
+                let svc = self.clone();
+                return Box::pin(async move {
+                    svc.whep.delete_whep_client(path.as_str()).await.unwrap();
                     Ok(builder
-                        .status(StatusCode::NOT_FOUND)
+                        .status(StatusCode::NO_CONTENT)
                         .body(Full::new(Bytes::from("")))
                         .unwrap())
                 });
