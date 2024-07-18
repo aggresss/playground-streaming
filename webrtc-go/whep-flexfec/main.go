@@ -26,8 +26,8 @@ const (
 	CANDIDATE           = "127.0.0.1"
 	ICE_UDP_PORT        = 15060
 	ICE_TCP_PORT        = 15060
-	AUDIO_FILE_NAME     = "output.ogg"
-	VIDEO_FILE_NAME     = "output.h264"
+	AUDIO_FILE_NAME     = "../output.ogg"
+	VIDEO_FILE_NAME     = "../output.h264"
 	OGG_PAGE_DURATION   = time.Millisecond * 20
 	H264_FRAME_DURATION = time.Millisecond * 41
 )
