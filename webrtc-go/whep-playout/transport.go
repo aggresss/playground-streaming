@@ -95,8 +95,8 @@ func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, e
 			return nil, err
 		}
 		playoutDelay, err := playoutdelay.NewInterceptor(
-			playoutdelay.PlayoutDelayMin(800*time.Millisecond),
-			playoutdelay.PlayoutDelayMax(800*time.Millisecond),
+			playoutdelay.PlayoutDelayMin(500*time.Millisecond),
+			playoutdelay.PlayoutDelayMax(1500*time.Millisecond),
 		)
 		if err != nil {
 			return nil, err
