@@ -1,5 +1,8 @@
 'use strict';
 
+// Options
+const audioCodecPreferencesSelect = document.querySelector('#audioCodecPreferences');
+const videoCodecPreferencesSelect = document.querySelector('#videoCodecPreferences');
 // WHIP
 const pubVideoVideo = document.querySelector('#pubVideo');
 const pubAudioCanvas = document.querySelector('#pubAudio');
@@ -19,6 +22,8 @@ const whepStopButton = document.querySelector('#whepStop');
 var whipClient = null;
 var whepClient = null;
 
+const supportsSetCodecPreferences = window.RTCRtpTransceiver && 'setCodecPreferences' in window.RTCRtpTransceiver.prototype;
+
 // Initialize
 window.onload = () => {
   whipUrlTextarea.value = window.location.protocol + '//' + window.location.hostname + ':8082/live/livestream.whip';
@@ -27,6 +32,34 @@ window.onload = () => {
   whepUrlTextarea.value = window.location.protocol + '//' + window.location.hostname + ':8082/live/livestream.whep';
   whepStartButton.addEventListener('click', whepStart);
   whepStopButton.addEventListener('click', whepStop);
+  // Prefernce
+  if (supportsSetCodecPreferences) {
+    const { codecs } = RTCRtpSender.getCapabilities('audio');
+    codecs.forEach(codec => {
+      if (['audio/CN', 'audio/telephone-event'].includes(codec.mimeType)) {
+        return;
+      }
+      const option = document.createElement('option');
+      option.value = (codec.mimeType + ' ' + codec.clockRate + ' ' +
+        (codec.sdpFmtpLine || '')).trim();
+      option.innerText = option.value;
+      audioCodecPreferencesSelect.appendChild(option);
+    });
+    audioCodecPreferencesSelect.disabled = false;
+  }
+  if (supportsSetCodecPreferences) {
+    const { codecs } = RTCRtpSender.getCapabilities('video');
+    codecs.forEach(codec => {
+      if (['video/red', 'video/ulpfec', 'video/rtx'].includes(codec.mimeType)) {
+        return;
+      }
+      const option = document.createElement('option');
+      option.value = (codec.mimeType + ' ' + (codec.sdpFmtpLine || '')).trim();
+      option.innerText = option.value;
+      videoCodecPreferencesSelect.appendChild(option);
+    });
+    videoCodecPreferencesSelect.disabled = false;
+  }
 }
 
 class WHIPClient {
@@ -70,10 +103,28 @@ class WHIPClient {
         let ms = new MediaStream([transceiver.sender.track]);
         switch (track.kind) {
           case 'audio':
+            if (audioCodecPreferencesSelect.value !== '') {
+              const [mimeType, clockRate, sdpFmtpLine] = audioCodecPreferencesSelect.value.split(' ');
+              const { codecs } = RTCRtpSender.getCapabilities('audio');
+              const selectedCodecIndex = codecs.findIndex(c => c.mimeType === mimeType && c.clockRate === parseInt(clockRate, 10) && c.sdpFmtpLine === sdpFmtpLine);
+              const selectedCodec = codecs[selectedCodecIndex];
+              codecs.splice(selectedCodecIndex, 1);
+              codecs.unshift(selectedCodec);
+              transceiver.setCodecPreferences(codecs);
+            }
             this.streamVisualizer = new StreamVisualizer(ms, this.audioElement);
             this.streamVisualizer.start();
             break;
           case 'video':
+            if (videoCodecPreferencesSelect.value !== '') {
+              const [mimeType, sdpFmtpLine] = videoCodecPreferencesSelect.value.split(' ');
+              const { codecs } = RTCRtpSender.getCapabilities('video');
+              const selectedCodecIndex = codecs.findIndex(c => c.mimeType === mimeType && c.sdpFmtpLine === sdpFmtpLine);
+              const selectedCodec = codecs[selectedCodecIndex];
+              codecs.splice(selectedCodecIndex, 1);
+              codecs.unshift(selectedCodec);
+              transceiver.setCodecPreferences(codecs);
+            }
             transceiver.sender.track.applyConstraints({
               width: 1280,
               height: 720,
@@ -122,12 +173,31 @@ class WHEPClient {
 
     console.log('whep peer connection created.')
 
-    this.peerConnection.addTransceiver("audio", {
+    const audioPubTransceiver = this.peerConnection.addTransceiver("audio", {
       direction: "recvonly",
     });
-    this.peerConnection.addTransceiver("video", {
+    if (audioCodecPreferencesSelect.value !== '') {
+      const [mimeType, clockRate, sdpFmtpLine] = audioCodecPreferencesSelect.value.split(' ');
+      const { codecs } = RTCRtpSender.getCapabilities('audio');
+      const selectedCodecIndex = codecs.findIndex(c => c.mimeType === mimeType && c.clockRate === parseInt(clockRate, 10) && c.sdpFmtpLine === sdpFmtpLine);
+      const selectedCodec = codecs[selectedCodecIndex];
+      codecs.splice(selectedCodecIndex, 1);
+      codecs.unshift(selectedCodec);
+      audioPubTransceiver.setCodecPreferences(codecs);
+    }
+
+    const videoPubTransceiver = this.peerConnection.addTransceiver("video", {
       direction: "recvonly",
     });
+    if (videoCodecPreferencesSelect.value !== '') {
+      const [mimeType, sdpFmtpLine] = videoCodecPreferencesSelect.value.split(' ');
+      const { codecs } = RTCRtpSender.getCapabilities('video');
+      const selectedCodecIndex = codecs.findIndex(c => c.mimeType === mimeType && c.sdpFmtpLine === sdpFmtpLine);
+      const selectedCodec = codecs[selectedCodecIndex];
+      codecs.splice(selectedCodecIndex, 1);
+      codecs.unshift(selectedCodec);
+      videoPubTransceiver.setCodecPreferences(codecs);
+    }
 
     this.peerConnection.ontrack = (event) => {
       const track = event.track;

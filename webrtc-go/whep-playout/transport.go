@@ -103,7 +103,6 @@ func createPeerConnection(params *TransportParams) (pc *webrtc.PeerConnection, e
 		}
 		interceptorRegistry.Add(playoutDelay)
 	}
-
 	// Configure Nack
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack"}, webrtc.RTPCodecTypeVideo)
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack", Parameter: "pli"}, webrtc.RTPCodecTypeVideo)
